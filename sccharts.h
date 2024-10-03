@@ -1,5 +1,5 @@
-#ifndef PACEMAKER_H
-#define PACEMAKER_H
+#ifndef SCCHARTS_H
+#define SCCHARTS_H
 /*
  * Automatically generated C code by
  * KIELER SCCharts - The Key to Efficient Modeling
@@ -10,7 +10,8 @@
 #include "timing.h"
 #include <stdio.h>
 
-typedef struct {
+typedef struct
+{
   double _region0_null_x;
   double _region1_null_x;
   double _region2_null_x;
@@ -303,8 +304,8 @@ typedef struct {
   char _pg116;
 } TickData;
 
-void reset(TickData* d);
-void logic(TickData* d);
-void tick(TickData* d);
+void reset(TickData *d);
+void logic(TickData *d);
+void tick(TickData *d);
 
 #endif /* !PACEMAKER_H */
