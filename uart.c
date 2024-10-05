@@ -4,11 +4,12 @@
 #include <altera_avalon_uart_regs.h>
 
 #include "uart.h"
+#include "util.h"
 
 #define UART_DIVISOR 433
 
-volatile char rxBuffer[BUFFER_SIZE]; // Buffer for received data
-volatile int rxIndex;                // Index for the received buffer
+volatile char rxBuffer[BUFFER_SIZE];
+volatile int rxIndex;
 volatile char receiveFlag = 0;
 
 volatile char transmitFlag = 0;

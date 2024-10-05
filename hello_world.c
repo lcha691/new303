@@ -26,29 +26,14 @@
 
 #include "sccharts.h"
 #include "timing.h"
-
-#define BUFFER_SIZE 100
-#define UART_DIVISOR 433
-
-typedef enum
-{
-	BUTTON,
-	UART,
-	NOT_A_MODE
-} Mode;
-
-typedef enum
-{
-	SCCHART,
-	C,
-	NOT_A_IMP
-} Implementation;
+#include "uart.h"
+#include "util.h"
+#include "sccharts_implementation.h"
 
 volatile char rx_buffer[BUFFER_SIZE]; // Buffer for received data
 volatile int rx_index = 0;			  // Index for the received buffer
 volatile char receive_flag = 0;
 
-void execScchart(double dt, Mode mode, TickData *data, int *button);
 alt_u32 timerLRI(void *context);
 alt_u32 timerURI(void *context);
 alt_u32 timerAVI(void *context);
@@ -56,11 +41,13 @@ alt_u32 timerAEI(void *context);
 alt_u32 timerVRP(void *context);
 alt_u32 timerPVARP(void *context);
 
+void flashLEDs(double dt, TickData *data);
+
 alt_u32 timerISR(void *context)
 {
 	int *timeCount = (int *)context;
 	(*timeCount)++;
-	return 1; // next time out is 100ms
+	return 1; // next time out is 1ms
 }
 
 void buttonISR(void *context, alt_u32 id)
@@ -68,35 +55,6 @@ void buttonISR(void *context, alt_u32 id)
 	volatile int *temp = (volatile int *)context;
 	(*temp) = IORD_ALTERA_AVALON_PIO_EDGE_CAP(KEYS_BASE);
 	IOWR_ALTERA_AVALON_PIO_EDGE_CAP(KEYS_BASE, 0);
-}
-
-void uartISR(void *context, alt_u32 id)
-{
-
-	// Clear control register
-	IOWR_ALTERA_AVALON_UART_CONTROL(UART_BASE, 0);
-
-	// Check if the interrupt was for RX (data received)
-	if (IORD_ALTERA_AVALON_UART_STATUS(UART_BASE) & ALTERA_AVALON_UART_STATUS_RRDY_MSK)
-	{
-
-		// Get received data
-		char data = IORD_ALTERA_AVALON_UART_RXDATA(UART_BASE);
-		if (rx_index < BUFFER_SIZE - 1)
-		{
-			rx_buffer[rx_index++] = data;
-			rx_buffer[rx_index] = '\0';
-			receive_flag = 1;
-		}
-		else
-		{
-			// Handle buffer overflow
-			rx_index = 0;
-		}
-	}
-
-	// Enable interrupt
-	IOWR_ALTERA_AVALON_UART_CONTROL(UART_BASE, (1 << 7));
 }
 
 int main()
@@ -126,6 +84,8 @@ int main()
 	uint64_t LRItime = 0;
 	void *LRItimerContext = (void *)&LRItime;
 	alt_alarm_start(&LRItime, 1, timerISR, LRItimerContext);
+
+	initUART();
 
 	// Reset LED
 	IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x00);
@@ -165,10 +125,13 @@ int main()
 		case C:
 			break;
 		case SCCHART:
-			execScchart(dt, mode, &data, &button);
+			// execScchart(dt, mode, &data, button);
 			break;
 		default:;
 		}
+
+		flashLEDs(dt, &data);
+		button = 0;
 	}
 	return 0;
 }
@@ -226,72 +189,6 @@ void flashLEDs(double dt, TickData *data)
 	}
 }
 
-void execScchart(double dt, Mode mode, TickData *data, int *button)
-{
-	/**
-	 * ***********
-	 *
-	 * BUTTON MODE
-	 *
-	 * ***********
-	 */
-
-	static systemTime = 0;
-	systemTime += dt;
-	data->deltaT = dt;
-
-	switch (mode)
-	{
-	case BUTTON:
-		// Update inputs from button clicks
-		data->AS = (*button & (1 << 2)) ? 1 : 0;
-		data->VS = (*button & (1 << 1)) ? 1 : 0;
-		*button = 0; // Bring back to 0
-
-		tick(data);
-		flashLEDs(dt, data);
-		break;
-	case UART:
-		/************
-		 *
-		 * UART MODE
-		 *
-		 * **********
-		 */
-
-		// Read from buffer
-		if (receive_flag == 1)
-		{
-			data->VS = (rx_buffer[rx_index - 1] == 65) ? 1 : 0;
-			data->AS = (rx_buffer[rx_index - 1] == 86) ? 1 : 0;
-			rx_index = 0;
-			receive_flag = 0;
-		}
-
-		tick(data);
-		data->VS = 0;
-		data->AS = 0;
-
-		// Write to UART
-		if (data->VP)
-		{
-			while (!(IORD_ALTERA_AVALON_UART_STATUS(UART_BASE) & ALTERA_AVALON_UART_STATUS_TRDY_MSK))
-			{
-			}
-			IOWR_ALTERA_AVALON_UART_TXDATA(UART_BASE, 'V');
-		}
-
-		if (data->AP)
-		{
-			while (!(IORD_ALTERA_AVALON_UART_STATUS(UART_BASE) & ALTERA_AVALON_UART_STATUS_TRDY_MSK))
-			{
-			}
-			IOWR_ALTERA_AVALON_UART_TXDATA(UART_BASE, 'A');
-		}
-
-		flashLEDs(dt, data);
-	}
-}
 void execC(double dt);
 
 /***********  TIMERS ****************/
