@@ -25,6 +25,8 @@
 #include <altera_avalon_uart_regs.h>
 
 #include "sccharts.h"
+#include "timing.h"
+
 #define BUFFER_SIZE 100
 #define UART_DIVISOR 433
 
@@ -42,11 +44,17 @@ typedef enum
 	NOT_A_IMP
 } Implementation;
 
-void execScchart(double dt, Mode mode, TickData *data, int *button);
-
 volatile char rx_buffer[BUFFER_SIZE]; // Buffer for received data
 volatile int rx_index = 0;			  // Index for the received buffer
 volatile char receive_flag = 0;
+
+void execScchart(double dt, Mode mode, TickData *data, int *button);
+alt_u32 timerLRI(void *context);
+alt_u32 timerURI(void *context);
+alt_u32 timerAVI(void *context);
+alt_u32 timerAEI(void *context);
+alt_u32 timerVRP(void *context);
+alt_u32 timerPVARP(void *context);
 
 alt_u32 timerISR(void *context)
 {
@@ -101,11 +109,6 @@ int main()
 	IOWR_ALTERA_AVALON_PIO_IRQ_MASK(KEYS_BASE, 0x7);
 	alt_irq_register(KEYS_IRQ, buttonContext, buttonISR);
 
-	// Register the ISR for UART
-	IOWR_ALTERA_AVALON_UART_DIVISOR(UART_BASE, UART_DIVISOR);
-	IOWR_ALTERA_AVALON_UART_CONTROL(UART_BASE, ALTERA_AVALON_UART_CONTROL_RRDY_MSK);
-	alt_irq_register(UART_IRQ, NULL, uartISR);
-
 	// SC Chart Init
 	TickData data;
 	reset(&data);
@@ -117,6 +120,12 @@ int main()
 	void *timerContext = (void *)&systemTime;
 	alt_alarm_start(&ticker, 1, timerISR, timerContext);
 	uint64_t prevTime = 0;
+
+	// Timer
+	alt_alarm LRIticker;
+	uint64_t LRItime = 0;
+	void *LRItimerContext = (void *)&LRItime;
+	alt_alarm_start(&LRItime, 1, timerISR, LRItimerContext);
 
 	// Reset LED
 	IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x00);
@@ -284,3 +293,46 @@ void execScchart(double dt, Mode mode, TickData *data, int *button)
 	}
 }
 void execC(double dt);
+
+/***********  TIMERS ****************/
+alt_u32 timerLRI(void *context)
+{
+	int *timeCount = (int *)context;
+	(*timeCount)++;
+	return LRI_VALUE; // next time out is 100ms
+}
+
+alt_u32 timerURI(void *context)
+{
+	int *timeCount = (int *)context;
+	(*timeCount)++;
+	return URI_VALUE; // next time out is 100ms
+}
+
+alt_u32 timerPVARP(void *context)
+{
+	int *timeCount = (int *)context;
+	(*timeCount)++;
+	return PVARP_VALUE; // next time out is 100ms
+}
+
+alt_u32 timerAVI(void *context)
+{
+	int *timeCount = (int *)context;
+	(*timeCount)++;
+	return AVI_VALUE; // next time out is 100ms
+}
+
+alt_u32 timerVRP(void *context)
+{
+	int *timeCount = (int *)context;
+	(*timeCount)++;
+	return VRP_VALUE; // next time out is 100ms
+}
+
+alt_u32 timerAEI(void *context)
+{
+	int *timeCount = (int *)context;
+	(*timeCount)++;
+	return AEI_VALUE; // next time out is 100ms
+}
