@@ -176,6 +176,7 @@ alt_u32 isrLRI(void *context)
 {
     VP = 1;
     pacemakerFlags = pacemakerFlags & ~LRI_MASK;
+    sendData('V');
     return 0;
 }
 
@@ -199,6 +200,7 @@ alt_u32 isrAVI(void *context)
     }
     pacemakerFlags = pacemakerFlags & ~AVI_MASK;
     VP = 1;
+    sendData('V');
     return 0;
 }
 
@@ -212,5 +214,6 @@ alt_u32 isrAEI(void *context)
 {
     pacemakerFlags = pacemakerFlags & ~AEI_MASK;
     AP = 1;
+    sendData('A');
     return 0;
 }
