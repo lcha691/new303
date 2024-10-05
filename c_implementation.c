@@ -39,9 +39,11 @@ void initC(void)
     alt_alarm_stop(&PVARPalarm);
     alt_alarm_stop(&VRPalarm);
 }
-void execC(double dt, Mode mode, int button)
+Heart execC(double dt, Mode mode, int button)
 {
+    VP, AP = 0;
 
+    // Get input signals
     switch (mode)
     {
     case BUTTON:
@@ -59,7 +61,10 @@ void execC(double dt, Mode mode, int button)
         break;
     }
 
-    // START AVI
+    /********************************/
+    /************ LOGIC *************/
+    /********************************/
+
     if (AS || AP)
     {
         if (!(pacemakerFlags & AVI_MASK))
@@ -98,10 +103,17 @@ void execC(double dt, Mode mode, int button)
         startAlarm(&URIalarm);
         startAlarm(&LRIalarm);
     }
+
+    Heart heart = {VS, AS, VP, AP};
+    return heart;
 }
 
 void startAlarm(alt_alarm *alarm)
 {
+    /**
+     * Starts the alarm and sets flag to HIGH.
+     */
+
     void *flagsContext = (void *)pacemakerFlags;
     int timerTicks;
     if (alarm == &AVIalarm)
@@ -144,6 +156,9 @@ void startAlarm(alt_alarm *alarm)
 
 void stopAlarm(alt_alarm *alarm)
 {
+    /**
+     * Stops the alarm and puts flag to LOW.
+     */
     alt_alarm_stop(alarm);
 
     if (alarm == &AVIalarm)

@@ -5,6 +5,6 @@
 #include "sccharts.h"
 
 void initScchart(void);
-void execScchart(double dt, Mode mode, TickData *data, int button);
+Heart execScchart(double dt, Mode mode, int button);
 
 #endif /* !SCC_IMPLEMENTATION_H */

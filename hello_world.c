@@ -34,16 +34,9 @@ volatile char rx_buffer[BUFFER_SIZE]; // Buffer for received data
 volatile int rx_index = 0;			  // Index for the received buffer
 volatile char receive_flag = 0;
 
-alt_u32 timerLRI(void *context);
-alt_u32 timerURI(void *context);
-alt_u32 timerAVI(void *context);
-alt_u32 timerAEI(void *context);
-alt_u32 timerVRP(void *context);
-alt_u32 timerPVARP(void *context);
+void flashLEDs(double dt, Heart *data);
 
-void flashLEDs(double dt, TickData *data);
-
-alt_u32 timerISR(void *context)
+int timerISR(void *context)
 {
 	int *timeCount = (int *)context;
 	(*timeCount)++;
@@ -67,23 +60,12 @@ int main()
 	IOWR_ALTERA_AVALON_PIO_IRQ_MASK(KEYS_BASE, 0x7);
 	alt_irq_register(KEYS_IRQ, buttonContext, buttonISR);
 
-	// SC Chart Init
-	TickData data;
-	reset(&data);
-	tick(&data); // init tick
-
 	// Timer Init
 	alt_alarm ticker;
 	uint64_t systemTime = 0;
 	void *timerContext = (void *)&systemTime;
 	alt_alarm_start(&ticker, 1, timerISR, timerContext);
 	uint64_t prevTime = 0;
-
-	// Timer
-	alt_alarm LRIticker;
-	uint64_t LRItime = 0;
-	void *LRItimerContext = (void *)&LRItime;
-	alt_alarm_start(&LRItime, 1, timerISR, LRItimerContext);
 
 	initUART();
 
@@ -94,6 +76,7 @@ int main()
 	// Initialize modes
 	Implementation implementation = NOT_A_IMP;
 	Mode mode = NOT_A_MODE;
+	Heart heart;
 	double dt = 0;
 	while (1)
 	{
@@ -125,20 +108,20 @@ int main()
 		case C:
 			break;
 		case SCCHART:
-			// execScchart(dt, mode, &data, button);
+			heart = execScchart(dt, mode, button);
 			break;
 		default:;
 		}
 
-		flashLEDs(dt, &data);
+		flashLEDs(dt, &heart);
 		button = 0;
 	}
 	return 0;
 }
 
-void flashLEDs(double dt, TickData *data)
+void flashLEDs(double dt, Heart *data)
 {
-	static alt_64 systemTime = 0;
+	static alt_u64 systemTime = 0;
 	systemTime += dt;
 	// Light up LEDs when VP or AP happens
 	if (data->VP)
@@ -187,49 +170,4 @@ void flashLEDs(double dt, TickData *data)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x02);
 	}
-}
-
-void execC(double dt);
-
-/***********  TIMERS ****************/
-alt_u32 timerLRI(void *context)
-{
-	int *timeCount = (int *)context;
-	(*timeCount)++;
-	return LRI_VALUE; // next time out is 100ms
-}
-
-alt_u32 timerURI(void *context)
-{
-	int *timeCount = (int *)context;
-	(*timeCount)++;
-	return URI_VALUE; // next time out is 100ms
-}
-
-alt_u32 timerPVARP(void *context)
-{
-	int *timeCount = (int *)context;
-	(*timeCount)++;
-	return PVARP_VALUE; // next time out is 100ms
-}
-
-alt_u32 timerAVI(void *context)
-{
-	int *timeCount = (int *)context;
-	(*timeCount)++;
-	return AVI_VALUE; // next time out is 100ms
-}
-
-alt_u32 timerVRP(void *context)
-{
-	int *timeCount = (int *)context;
-	(*timeCount)++;
-	return VRP_VALUE; // next time out is 100ms
-}
-
-alt_u32 timerAEI(void *context)
-{
-	int *timeCount = (int *)context;
-	(*timeCount)++;
-	return AEI_VALUE; // next time out is 100ms
 }

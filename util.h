@@ -16,4 +16,12 @@ typedef enum
 	NOT_A_IMP
 } Implementation;
 
+typedef struct
+{
+	char VS;
+	char AS;
+	char VP;
+	char AP;
+} Heart;
+
 #endif
