@@ -11,5 +11,6 @@ void initUART(void);
 void enableUART(void);
 void disableUART(void);
 void sendData(char data);
+char getData(void);
 
 #endif /* !UART_H */

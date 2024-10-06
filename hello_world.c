@@ -29,12 +29,11 @@
 #include "uart.h"
 #include "util.h"
 #include "sccharts_implementation.h"
+#include "c_implementation.h"
 
 volatile char rx_buffer[BUFFER_SIZE]; // Buffer for received data
 volatile int rx_index = 0;			  // Index for the received buffer
 volatile char receive_flag = 0;
-
-void flashLEDs(double dt, Heart *data);
 
 int timerISR(void *context)
 {
@@ -49,6 +48,7 @@ void buttonISR(void *context, alt_u32 id)
 	(*temp) = IORD_ALTERA_AVALON_PIO_EDGE_CAP(KEYS_BASE);
 	IOWR_ALTERA_AVALON_PIO_EDGE_CAP(KEYS_BASE, 0);
 }
+
 
 int main()
 {
@@ -68,6 +68,8 @@ int main()
 	uint64_t prevTime = 0;
 
 	initUART();
+	initScchart();
+	initC();
 
 	// Reset LED
 	IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x00);
@@ -96,78 +98,24 @@ int main()
 
 		if (IORD_ALTERA_AVALON_PIO_DATA(SWITCHES_BASE) & (1 << 1))
 		{
-			mode = BUTTON;
+			mode = UART;
 		}
 		else if (!(IORD_ALTERA_AVALON_PIO_DATA(SWITCHES_BASE) & ~(1 << 1)))
 		{
-			mode = UART;
+			mode = BUTTON;
 		}
 
 		switch (implementation)
 		{
 		case C:
+			execC(dt, mode, &button);
 			break;
 		case SCCHART:
-			heart = execScchart(dt, mode, button);
+			execScchart(dt, mode, &button);
 			break;
 		default:;
 		}
-
-		flashLEDs(dt, &heart);
-		button = 0;
 	}
 	return 0;
 }
 
-void flashLEDs(double dt, Heart *data)
-{
-	static alt_u64 systemTime = 0;
-	systemTime += dt;
-	// Light up LEDs when VP or AP happens
-	if (data->VP)
-	{
-		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x01);
-		printf("VP\r\n");
-	}
-	else
-	{
-		if (systemTime % 100 == 0)
-		{
-			IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE) & ~0x01);
-		}
-	}
-
-	if (data->AP)
-	{
-		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x02);
-		printf("AP\r\n");
-	}
-	else
-	{
-		if (systemTime % 100 == 0)
-		{
-			IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE) & ~0x02);
-		}
-	}
-
-	// Light up LEDs when VS or AS happens
-	if (data->VS)
-	{
-		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x01);
-		printf("VS\r\n");
-	}
-	else
-	{
-		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x01);
-	}
-
-	if (data->AS)
-	{
-		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x02);
-		printf("AS\r\n");
-	}
-	else
-	{
-		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x02);
-	}
-}

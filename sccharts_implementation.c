@@ -7,14 +7,70 @@
 #include "uart.h"
 
 TickData data;
+char uartData;
 
 void initScchart(void)
 {
     // SC Chart Init
     reset(&data);
     tick(&data); // init tick
+    uartData = 0;
 }
-Heart execScchart(double dt, Mode mode, int button)
+
+void flashLEDs(double dt, char AS, char AP, char VS, char VP)
+{
+	static alt_u64 systemTime = 0;
+	systemTime += dt;
+	// Light up LEDs when VP or AP happens
+	if (VP)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x01);
+		printf("VP\r\n");
+	}
+	else
+	{
+		if (systemTime % 100 == 0)
+		{
+			IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE) & ~0x01);
+		}
+	}
+
+	if (AP)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x02);
+		printf("AP\r\n");
+	}
+	else
+	{
+		if (systemTime % 100 == 0)
+		{
+			IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE) & ~0x02);
+		}
+	}
+
+	// Light up LEDs when VS or AS happens
+	if (VS)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x01);
+		printf("VS\r\n");
+	}
+	else
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x01);
+	}
+
+	if (AS)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x02);
+		printf("AS\r\n");
+	}
+	else
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x02);
+	}
+}
+
+void execScchart(double dt, Mode mode, int *button)
 {
     /**
      * ***********
@@ -32,11 +88,12 @@ Heart execScchart(double dt, Mode mode, int button)
     {
     case BUTTON:
         // Update inputs from button clicks
-        data.AS = (button & (1 << 2)) ? 1 : 0;
-        data.VS = (button & (1 << 1)) ? 1 : 0;
+        data.AS = (*button & (1 << 2)) ? 1 : 0;
+        data.VS = (*button & (1 << 1)) ? 1 : 0;
+        *button = 0;
 
         tick(&data);
-        flashLEDs(dt, data);
+
         break;
     case UART:
         /************
@@ -47,12 +104,12 @@ Heart execScchart(double dt, Mode mode, int button)
          */
 
         // Read from buffer
-        if (receiveFlag == 1)
+
+    	uartData = getData();
+        if (uartData)
         {
-            data.VS = (rxBuffer[rxIndex - 1] == 65) ? 1 : 0;
-            data.AS = (rxBuffer[rxIndex - 1] == 86) ? 1 : 0;
-            rxIndex = 0;
-            receiveFlag = 0;
+            data.VS = (uartData == 65) ? 1 : 0;
+            data.AS = (uartData == 86) ? 1 : 0;
         }
 
         tick(&data);
@@ -71,6 +128,5 @@ Heart execScchart(double dt, Mode mode, int button)
         }
     }
 
-    Heart heart = {data.VS, data.AS, data.VP, data.AP};
-    return heart;
+    flashLEDs(dt, data.AS, data.AP, data.VS, data.VP);
 }

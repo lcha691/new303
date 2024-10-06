@@ -1,4 +1,6 @@
 software/
 desktop.ini
+.metadata/
+RemoteSystemsTempFiles/
 .vscode/
 *.exe

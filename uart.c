@@ -48,6 +48,9 @@ void uartISR(void *context, alt_u32 id)
             transmitFlag = 0;
         }
     }
+
+    // Enable interrupt
+	IOWR_ALTERA_AVALON_UART_CONTROL(UART_BASE, (1 << 7));
 }
 
 void initUART(void)
@@ -66,6 +69,20 @@ void disableUART(void)
 }
 void sendData(char data)
 {
-    dataToSend = data;
-    transmitFlag = 1;
+	while (!(IORD_ALTERA_AVALON_UART_STATUS(UART_BASE) & ALTERA_AVALON_UART_STATUS_TRDY_MSK))
+	{
+	}
+	IOWR_ALTERA_AVALON_UART_TXDATA(UART_BASE, data);
+}
+
+char getData(void)
+{
+	if(receiveFlag == 1)
+	{
+		char d = rxBuffer[rxIndex - 1];
+		rxIndex = 0;
+		receiveFlag = 0;
+		return d;
+	}
+	return 0;
 }

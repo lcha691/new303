@@ -30,6 +30,59 @@ volatile char pacemakerFlags = 0x00;
 volatile alt_alarm LRIalarm, URIalarm, AVIalarm, AEIalarm, PVARPalarm, VRPalarm;
 volatile char VS, VP, AS, AP;
 
+void flashLEDs_C(double dt, char AS, char AP, char VS, char VP)
+{
+	static alt_u64 systemTime = 0;
+	systemTime += dt;
+	// Light up LEDs when VP or AP happens
+	if (VP)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x01);
+		printf("VP\r\n");
+	}
+	else
+	{
+		if (systemTime % 100 == 0)
+		{
+			IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE) & ~0x01);
+		}
+	}
+
+	if (AP)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x02);
+		printf("AP\r\n");
+	}
+	else
+	{
+		if (systemTime % 100 == 0)
+		{
+			IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE) & ~0x02);
+		}
+	}
+
+	// Light up LEDs when VS or AS happens
+	if (VS)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x01);
+		printf("VS\r\n");
+	}
+	else
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x01);
+	}
+
+	if (AS)
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x02);
+		printf("AS\r\n");
+	}
+	else
+	{
+		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, IORD_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE) & ~0x02);
+	}
+}
+
 void initC(void)
 {
     alt_alarm_stop(&LRIalarm);
@@ -39,16 +92,16 @@ void initC(void)
     alt_alarm_stop(&PVARPalarm);
     alt_alarm_stop(&VRPalarm);
 }
-Heart execC(double dt, Mode mode, int button)
+void execC(double dt, Mode mode, int *button)
 {
-    VP, AP = 0;
-
     // Get input signals
     switch (mode)
     {
     case BUTTON:
-        VS = (button & (1 << 1)) ? 1 : 0;
-        AS = (button & (1 << 2)) ? 1 : 0;
+        VS = (*button & (1 << 1)) ? 1 : 0;
+        AS = (*button & (1 << 2)) ? 1 : 0;
+        *button = 0;
+
         break;
     case UART:
         if (receiveFlag == 1)
@@ -104,8 +157,8 @@ Heart execC(double dt, Mode mode, int button)
         startAlarm(&LRIalarm);
     }
 
-    Heart heart = {VS, AS, VP, AP};
-    return heart;
+    flashLEDs_C(dt, AS, AP, VS, VP);
+    VP, AP = 0;
 }
 
 void startAlarm(alt_alarm *alarm)
@@ -189,6 +242,7 @@ void stopAlarm(alt_alarm *alarm)
 
 alt_u32 isrLRI(void *context)
 {
+	printf("LRI TIMER STARTED\n");
     VP = 1;
     pacemakerFlags = pacemakerFlags & ~LRI_MASK;
     sendData('V');
@@ -197,18 +251,21 @@ alt_u32 isrLRI(void *context)
 
 alt_u32 isrURI(void *context)
 {
+	printf("URI TIMER STARTED\n");
     pacemakerFlags = pacemakerFlags & ~URI_MASK;
     return 0;
 }
 
 alt_u32 isrPVARP(void *context)
 {
+	printf("PVARP TIMER STARTED\n");
     pacemakerFlags = pacemakerFlags & ~PVARP_MASK;
     return 0;
 }
 
 alt_u32 isrAVI(void *context)
 {
+	printf("AVI TIMER STARTED\n");
     if (pacemakerFlags & URI_MASK)
     {
         return 1; // Extend alarm
@@ -221,12 +278,14 @@ alt_u32 isrAVI(void *context)
 
 alt_u32 isrVRP(void *context)
 {
+	printf("VRP TIMER STARTED\n");
     pacemakerFlags = pacemakerFlags & ~VRP_MASK;
     return 0;
 }
 
 alt_u32 isrAEI(void *context)
 {
+	printf("AEI TIMER STARTED\n");
     pacemakerFlags = pacemakerFlags & ~AEI_MASK;
     AP = 1;
     sendData('A');

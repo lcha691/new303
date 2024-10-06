@@ -4,6 +4,6 @@
 #include "util.h"
 
 void initC(void);
-Heart execC(double dt, Mode mode, int button);
+void execC(double dt, Mode mode, int *button);
 
 #endif /* !C_IMPLEMENTATION_H */
