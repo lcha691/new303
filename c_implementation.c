@@ -175,42 +175,36 @@ void startAlarm(alt_alarm *alarm)
     int timerTicks;
     if (alarm == &AVIalarm)
     {
-    	printf("AVI TIMER STARTED\n");
         pacemakerFlags = pacemakerFlags | AVI_MASK;
         timerTicks = AVI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrAVI, flagsContext);
     }
     else if (alarm == &AEIalarm)
     {
-    	printf("AEI TIMER STARTED\n");
         pacemakerFlags = pacemakerFlags | AEI_MASK;
         timerTicks = AEI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrAEI, flagsContext);
     }
     else if (alarm == &URIalarm)
     {
-    	printf("URI TIMER STARTED\n");
         pacemakerFlags = pacemakerFlags | URI_MASK;
         timerTicks = URI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrURI, flagsContext);
     }
     else if (alarm == &LRIalarm)
     {
-    	printf("LRI TIMER STARTED\n");
         pacemakerFlags = pacemakerFlags | LRI_MASK;
         timerTicks = LRI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrLRI, flagsContext);
     }
     else if (alarm == &PVARPalarm)
     {
-    	printf("PVARP TIMER STARTED\n");
         pacemakerFlags = pacemakerFlags | PVARP_MASK;
         timerTicks = PVARP_VALUE;
         alt_alarm_start(alarm, timerTicks, isrPVARP, flagsContext);
     }
     else if (alarm == &VRPalarm)
     {
-    	printf("VRP TIMER STARTED\n");
         pacemakerFlags = pacemakerFlags | VRP_MASK;
         timerTicks = VRP_VALUE;
         alt_alarm_start(alarm, timerTicks, isrVRP, flagsContext);
@@ -252,7 +246,6 @@ void stopAlarm(alt_alarm *alarm)
 
 alt_u32 isrLRI(void *context)
 {
-	printf("LRI TIMER FINISHED\n");
     VP = 1;
     pacemakerFlags = pacemakerFlags & ~LRI_MASK;
     // sendData('V');
@@ -262,7 +255,6 @@ alt_u32 isrLRI(void *context)
 
 alt_u32 isrURI(void *context)
 {
-	printf("URI TIMER FINISHED\n");
     pacemakerFlags = pacemakerFlags & ~URI_MASK;
     alt_alarm_stop(&URIalarm);
     return 0;
@@ -270,7 +262,6 @@ alt_u32 isrURI(void *context)
 
 alt_u32 isrPVARP(void *context)
 {
-	printf("PVARP TIMER FINISHED\n");
     pacemakerFlags = pacemakerFlags & ~PVARP_MASK;
     alt_alarm_stop(&PVARPalarm);
     return 0;
@@ -278,7 +269,6 @@ alt_u32 isrPVARP(void *context)
 
 alt_u32 isrAVI(void *context)
 {
-	printf("AVI TIMER FINISHED\n");
     if (pacemakerFlags & URI_MASK)
     {
         return 1; // Extend alarm
@@ -292,7 +282,6 @@ alt_u32 isrAVI(void *context)
 
 alt_u32 isrVRP(void *context)
 {
-	printf("VRP TIMER FINISHED\n");
     pacemakerFlags = pacemakerFlags & ~VRP_MASK;
     alt_alarm_stop(&VRPalarm);
     return 0;
@@ -300,7 +289,6 @@ alt_u32 isrVRP(void *context)
 
 alt_u32 isrAEI(void *context)
 {
-	printf("AEI TIMER FINISHED\n");
     pacemakerFlags = pacemakerFlags & ~AEI_MASK;
     AP = 1;
     // sendData('A');
