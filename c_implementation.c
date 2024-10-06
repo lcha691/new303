@@ -29,6 +29,8 @@ volatile char pacemakerFlags = 0x00;
 
 volatile alt_alarm LRIalarm, URIalarm, AVIalarm, AEIalarm, PVARPalarm, VRPalarm;
 volatile char VS, VP, AS, AP;
+volatile Mode currentMode;
+char uartData;
 
 void flashLEDs_C(double dt, char AS, char AP, char VS, char VP)
 {
@@ -38,7 +40,6 @@ void flashLEDs_C(double dt, char AS, char AP, char VS, char VP)
 	if (VP)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x01);
-		printf("VP\r\n");
 	}
 	else
 	{
@@ -51,7 +52,6 @@ void flashLEDs_C(double dt, char AS, char AP, char VS, char VP)
 	if (AP)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x02);
-		printf("AP\r\n");
 	}
 	else
 	{
@@ -65,7 +65,6 @@ void flashLEDs_C(double dt, char AS, char AP, char VS, char VP)
 	if (VS)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x01);
-		printf("VS\r\n");
 	}
 	else
 	{
@@ -75,7 +74,6 @@ void flashLEDs_C(double dt, char AS, char AP, char VS, char VP)
 	if (AS)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x02);
-		printf("AS\r\n");
 	}
 	else
 	{
@@ -95,7 +93,8 @@ void initC(void)
 void execC(double dt, Mode mode, int *button)
 {
     // Get input signals
-    switch (mode)
+	currentMode = mode;
+    switch (currentMode)
     {
     case BUTTON:
         VS = (*button & (1 << 1)) ? 1 : 0;
@@ -104,10 +103,11 @@ void execC(double dt, Mode mode, int *button)
 
         break;
     case UART:
+    	uartData = getData();
         if (receiveFlag == 1)
         {
-            VS = (rxBuffer[rxIndex - 1] == 65) ? 1 : 0;
-            AS = (rxBuffer[rxIndex - 1] == 86) ? 1 : 0;
+            VS = (uartData == 65) ? 1 : 0;
+            AS = (uartData == 86) ? 1 : 0;
             rxIndex = 0;
             receiveFlag = 0;
         }
@@ -120,18 +120,21 @@ void execC(double dt, Mode mode, int *button)
 
     if (AS || AP)
     {
+    	if(AS)
+    	{
+    		if ((pacemakerFlags & AEI_MASK) && !(pacemakerFlags & PVARP_MASK))
+			{
+				stopAlarm(&AEIalarm);
+			}
+    	}
         if (!(pacemakerFlags & AVI_MASK))
         {
             startAlarm(&AVIalarm);
         }
-
-        if ((pacemakerFlags & AEI_MASK) && !(pacemakerFlags & PVARP_MASK))
-        {
-            stopAlarm(&AEIalarm);
-        }
         flashLEDs_C(dt, AS, AP, VS, VP);
         AP = 0;
     }
+
 
     if (VS || VP)
     {
@@ -173,6 +176,8 @@ void startAlarm(alt_alarm *alarm)
 
     void *flagsContext = (void *)pacemakerFlags;
     int timerTicks;
+    alt_alarm_stop(alarm);
+
     if (alarm == &AVIalarm)
     {
         pacemakerFlags = pacemakerFlags | AVI_MASK;
@@ -248,7 +253,9 @@ alt_u32 isrLRI(void *context)
 {
     VP = 1;
     pacemakerFlags = pacemakerFlags & ~LRI_MASK;
-    // sendData('V');
+    if(currentMode == UART){
+    	sendData('V');
+    }
     alt_alarm_stop(&LRIalarm);
     return 0;
 }
@@ -275,7 +282,9 @@ alt_u32 isrAVI(void *context)
     }
     pacemakerFlags = pacemakerFlags & ~AVI_MASK;
     VP = 1;
-    // sendData('V');
+    if(currentMode == UART){
+    	sendData('V');
+    }
     alt_alarm_stop(&AVIalarm);
     return 0;
 }
@@ -291,7 +300,9 @@ alt_u32 isrAEI(void *context)
 {
     pacemakerFlags = pacemakerFlags & ~AEI_MASK;
     AP = 1;
-    // sendData('A');
+    if(currentMode == UART){
+    	sendData('A');
+    }
     alt_alarm_stop(&AEIalarm);
     return 0;
 }
