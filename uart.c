@@ -9,6 +9,7 @@
 #define UART_DIVISOR 433
 
 volatile char rxBuffer[BUFFER_SIZE];
+volatile char dataToSend;
 volatile int rxIndex;
 volatile char receiveFlag = 0;
 
@@ -27,11 +28,13 @@ void uartISR(void *context, alt_u32 id)
 
         // Get received data
         char data = IORD_ALTERA_AVALON_UART_RXDATA(UART_BASE);
+        dataToSend = data;
+		receiveFlag = 1;
         if (rxIndex < BUFFER_SIZE - 1)
         {
-            rxBuffer[rxIndex++] = data;
-            rxBuffer[rxIndex] = '\0';
-            receiveFlag = 1;
+//            rxBuffer[rxIndex++] = data;
+//            rxBuffer[rxIndex] = '\0';
+
         }
         else
         {
@@ -79,7 +82,8 @@ char getData(void)
 {
 	if(receiveFlag == 1)
 	{
-		char d = rxBuffer[rxIndex - 1];
+		char d = dataToSend;
+		dataToSend = 0;
 		rxIndex = 0;
 		receiveFlag = 0;
 		return d;
