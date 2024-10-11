@@ -108,8 +108,8 @@ void execScchart(double dt, Mode mode, int *button)
     	uartData = getData();
         if (uartData)
         {
-            data.VS = (uartData == 65) ? 1 : 0;
-            data.AS = (uartData == 86) ? 1 : 0;
+            data.VS = (uartData == 86) ? 1 : 0;
+            data.AS = (uartData == 65) ? 1 : 0;
         }
 
         tick(&data);
