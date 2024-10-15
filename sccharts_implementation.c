@@ -104,7 +104,6 @@ void execScchart(double dt, Mode mode, int *button)
          */
 
         // Read from buffer
-
     	uartData = getData();
         if (uartData)
         {

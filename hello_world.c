@@ -91,7 +91,7 @@ int main()
 		{
 			implementation = C;
 		}
-		else if (!(IORD_ALTERA_AVALON_PIO_DATA(SWITCHES_BASE) & ~(1 << 0)))
+		else
 		{
 			implementation = SCCHART;
 		}
@@ -100,7 +100,7 @@ int main()
 		{
 			mode = UART;
 		}
-		else if (!(IORD_ALTERA_AVALON_PIO_DATA(SWITCHES_BASE) & ~(1 << 1)))
+		else
 		{
 			mode = BUTTON;
 		}
