@@ -30,26 +30,6 @@ void uartISR(void *context, alt_u32 id)
         char data = IORD_ALTERA_AVALON_UART_RXDATA(UART_BASE);
         dataToSend = data;
 		receiveFlag = 1;
-        if (rxIndex < BUFFER_SIZE - 1)
-        {
-//            rxBuffer[rxIndex++] = data;
-//            rxBuffer[rxIndex] = '\0';
-
-        }
-        else
-        {
-            // Handle buffer overflow
-            rxIndex = 0;
-        }
-    }
-
-    if (IORD_ALTERA_AVALON_UART_STATUS(UART_BASE) & ALTERA_AVALON_UART_STATUS_TRDY_MSK)
-    {
-        if (transmitFlag == 1)
-        {
-            IOWR_ALTERA_AVALON_UART_TXDATA(UART_BASE, dataToSend);
-            transmitFlag = 0;
-        }
     }
 
     // Enable interrupt
@@ -72,6 +52,9 @@ void disableUART(void)
 }
 void sendData(char data)
 {
+	/**
+	 * Sends data via UART by polling.
+	 */
 	while (!(IORD_ALTERA_AVALON_UART_STATUS(UART_BASE) & ALTERA_AVALON_UART_STATUS_TRDY_MSK))
 	{
 	}
@@ -80,7 +63,11 @@ void sendData(char data)
 
 char getData(void)
 {
-	if(receiveFlag == 1)
+	/**
+	 * Gets the data that was received in UART
+	 * Returns 0 if UART has not received anything
+	 */
+	if(dataToSend)
 	{
 		char d = dataToSend;
 		dataToSend = 0;

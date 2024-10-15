@@ -48,7 +48,6 @@ void turnOffLEDs(char ledTimeAP, char ledTimeVP, char AS, char VS)
 	if (VS)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x01);
-		printf("VS\r\n");
 	}
 	else
 	{
@@ -58,7 +57,6 @@ void turnOffLEDs(char ledTimeAP, char ledTimeVP, char AS, char VS)
 	if (AS)
 	{
 		IOWR_ALTERA_AVALON_PIO_DATA(LEDS_RED_BASE, 0x02);
-		printf("AS\r\n");
 	}
 	else
 	{
@@ -80,6 +78,7 @@ void execC(double dt, Mode mode, int *button)
 	static char ledTimeVP, ledTimeAP = 0;
 	ledTimeVP += dt;
 	ledTimeAP += dt;
+
     // Get input signals
 	currentMode = mode;
     switch (currentMode)
@@ -88,7 +87,6 @@ void execC(double dt, Mode mode, int *button)
         VS = (*button & (1 << 1)) ? 1 : 0;
         AS = (*button & (1 << 2)) ? 1 : 0;
         *button = 0;
-
         break;
     case UART:
     	uartData = getData();
@@ -106,6 +104,8 @@ void execC(double dt, Mode mode, int *button)
     /************ LOGIC *************/
     /********************************/
 
+
+    // ATRIAL EVENT
     if (AS || AP)
     {
     	if ((pacemakerFlags & AEI_MASK) && !(pacemakerFlags & PVARP_MASK))
@@ -121,36 +121,36 @@ void execC(double dt, Mode mode, int *button)
     }
 
 
+    // VENTRICULAR EVENT
     if (VS || VP)
     {
-    	if(pacemakerFlags & VRP_MASK)
-    	{
-    		return;
-    	}
-        if ((pacemakerFlags & AVI_MASK))
+    	// BLOCKER
+
+    	// STOP AVI
+        if ((pacemakerFlags & AVI_MASK) && !(pacemakerFlags & VRP_MASK))
         {
             stopAlarm(&AVIalarm);
         }
 
-
-
-        if (!(pacemakerFlags & PVARP_MASK))
+        // START PVARP
+        if (!(pacemakerFlags & PVARP_MASK) && !(pacemakerFlags & VRP_MASK))
         {
             startAlarm(&PVARPalarm);
         }
 
-        if (!(pacemakerFlags & AEI_MASK))
+        // START AEI
+        if (!(pacemakerFlags & AEI_MASK) && !(pacemakerFlags & VRP_MASK))
         {
             startAlarm(&AEIalarm);
         }
 
+        // START VRP & URI & LRI
         if (!(pacemakerFlags & VRP_MASK))
         {
             startAlarm(&VRPalarm);
+			startAlarm(&URIalarm);
+			startAlarm(&LRIalarm);
         }
-
-        startAlarm(&URIalarm);
-		startAlarm(&LRIalarm);
 
         VP = 0;
         ledTimeVP = 0;
@@ -173,42 +173,36 @@ void startAlarm(alt_alarm *alarm)
 
     if (alarm == &AVIalarm)
     {
-//    	printf("AVI STARTED\n");
         pacemakerFlags = pacemakerFlags | AVI_MASK;
         timerTicks = AVI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrAVI, flagsContext);
     }
     else if (alarm == &AEIalarm)
     {
-//    	printf("AEI STARTED\n");
         pacemakerFlags = pacemakerFlags | AEI_MASK;
         timerTicks = AEI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrAEI, flagsContext);
     }
     else if (alarm == &URIalarm)
     {
-//    	printf("URI STARTED\n");
         pacemakerFlags = pacemakerFlags | URI_MASK;
         timerTicks = URI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrURI, flagsContext);
     }
     else if (alarm == &LRIalarm)
     {
-//    	printf("LRI STARTED\n");
         pacemakerFlags = pacemakerFlags | LRI_MASK;
         timerTicks = LRI_VALUE;
         alt_alarm_start(alarm, timerTicks, isrLRI, flagsContext);
     }
     else if (alarm == &PVARPalarm)
     {
-//    	printf("PVARP STARTED\n");
         pacemakerFlags = pacemakerFlags | PVARP_MASK;
         timerTicks = PVARP_VALUE;
         alt_alarm_start(alarm, timerTicks, isrPVARP, flagsContext);
     }
     else if (alarm == &VRPalarm)
     {
-//    	printf("VRP STARTED\n");
         pacemakerFlags = pacemakerFlags | VRP_MASK;
         timerTicks = VRP_VALUE;
         alt_alarm_start(alarm, timerTicks, isrVRP, flagsContext);
@@ -224,35 +218,33 @@ void stopAlarm(alt_alarm *alarm)
 
     if (alarm == &AVIalarm)
     {
-//    	printf("AVI STOPPED\n");
         pacemakerFlags = pacemakerFlags & ~AVI_MASK;
     }
     else if (alarm == &AEIalarm)
     {
-//    	printf("AEI STOPPED\n");
         pacemakerFlags = pacemakerFlags & ~AEI_MASK;
     }
     else if (alarm == &URIalarm)
     {
-//    	printf("URI STOPPED\n");
         pacemakerFlags = pacemakerFlags & ~URI_MASK;
     }
     else if (alarm == &LRIalarm)
     {
-//    	printf("LRI STOPPED\n");
         pacemakerFlags = pacemakerFlags & ~LRI_MASK;
     }
     else if (alarm == &PVARPalarm)
     {
-//    	printf("PVARP STOPPED\n");
         pacemakerFlags = pacemakerFlags & ~PVARP_MASK;
     }
     else if (alarm == &VRPalarm)
     {
-//    	printf("VRP STOPPED\n");
         pacemakerFlags = pacemakerFlags & ~VRP_MASK;
     }
 }
+
+/******************
+ *** TIMER ISRs ***
+ ******************/
 
 alt_u32 isrLRI(void *context)
 {
@@ -261,10 +253,8 @@ alt_u32 isrLRI(void *context)
     IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x01);
     if(currentMode == UART){
     	sendData('V');
-//    	printf("SENT V TO UART\n");
     }
     alt_alarm_stop(&LRIalarm);
-//    printf("LRI TIMEOUT\n");
     return 0;
 }
 
@@ -272,7 +262,6 @@ alt_u32 isrURI(void *context)
 {
     pacemakerFlags = pacemakerFlags & ~URI_MASK;
     alt_alarm_stop(&URIalarm);
-//    printf("URI TIMEOUT\n");
     return 0;
 }
 
@@ -280,7 +269,6 @@ alt_u32 isrPVARP(void *context)
 {
     pacemakerFlags = pacemakerFlags & ~PVARP_MASK;
     alt_alarm_stop(&PVARPalarm);
-//    printf("PVARP TIMEOUT\n");
     return 0;
 }
 
@@ -295,10 +283,8 @@ alt_u32 isrAVI(void *context)
     VP = 1;
     if(currentMode == UART){
     	sendData('V');
-//    	printf("SENT V TO UART\n");
     }
     alt_alarm_stop(&AVIalarm);
-//    printf("AVI TIMEOUT\n");
     return 0;
 }
 
@@ -306,7 +292,6 @@ alt_u32 isrVRP(void *context)
 {
     pacemakerFlags = pacemakerFlags & ~VRP_MASK;
     alt_alarm_stop(&VRPalarm);
-//    printf("VRP TIMEOUT\n");
     return 0;
 }
 
@@ -317,9 +302,7 @@ alt_u32 isrAEI(void *context)
     IOWR_ALTERA_AVALON_PIO_DATA(LEDS_GREEN_BASE, 0x02);
     if(currentMode == UART){
     	sendData('A');
-//    	printf("\n\nSENT A TO UART\n\n");
     }
     alt_alarm_stop(&AEIalarm);
-//    printf("AEI TIMEOUT\n");
     return 0;
 }
