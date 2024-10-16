@@ -88,8 +88,8 @@ void execScchart(double dt, Mode mode, int *button)
     {
     case BUTTON:
         // Update inputs from button clicks
-        data.AS = (*button & (1 << 2)) ? 1 : 0;
-        data.VS = (*button & (1 << 1)) ? 1 : 0;
+        data.AS = (*button & (1 << 1)) ? 1 : 0;
+        data.VS = (*button & (1 << 0)) ? 1 : 0;
         *button = 0;
 
         tick(&data);

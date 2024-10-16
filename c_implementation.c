@@ -84,8 +84,8 @@ void execC(double dt, Mode mode, int *button)
     switch (currentMode)
     {
     case BUTTON:
-        VS = (*button & (1 << 1)) ? 1 : 0;
-        AS = (*button & (1 << 2)) ? 1 : 0;
+        VS = (*button & (1 << 0)) ? 1 : 0;
+        AS = (*button & (1 << 1)) ? 1 : 0;
         *button = 0;
         break;
     case UART:
