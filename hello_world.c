@@ -105,6 +105,9 @@ int main()
 			mode = BUTTON;
 		}
 
+		/**
+		 * MODE SELECTION
+		 */
 		switch (implementation)
 		{
 		case C:
